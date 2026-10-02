@@ -1,0 +1,73 @@
+name: Android Build and Test
+
+# kailan tatakbo: pag may push, pag may pull request, o manual sa Actions tab
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # kunin yung code sa repo
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # hanapin kung nasa root ng repo yung project o nasa SpotrApp folder
+      - name: Find project folder
+        run: |
+          if [ -f gradlew ]; then
+            echo "PROJECT_DIR=." >> $GITHUB_ENV
+          elif [ -f SpotrApp/gradlew ]; then
+            echo "PROJECT_DIR=SpotrApp" >> $GITHUB_ENV
+          else
+            echo "gradlew not found, check your folder structure"
+            exit 1
+          fi
+
+      # JDK 25 kasi yun yung nasa gradle-daemon-jvm.properties ng project
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 25
+
+      # para ma-download ni gradle yung Android SDK (compileSdk 37)
+      - name: Accept Android SDK licenses
+        run: yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses > /dev/null || true
+
+      # cache para mas mabilis yung next runs
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # minsan nawawala yung executable permission ng gradlew pag galing Windows
+      - name: Make gradlew executable
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: chmod +x gradlew
+
+      # dito malalaman kung may compile error (kasama na yung Hilt at Room)
+      - name: Build debug APK
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: ./gradlew assembleDebug
+
+      # tatakbuhin yung unit tests sa app/src/test
+      - name: Run unit tests
+        working-directory: ${{ env.PROJECT_DIR }}
+        run: ./gradlew testDebugUnitTest
+
+      # pwede i-download yung APK sa Actions tab tapos i-install sa phone
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: spotr-debug-apk
+          path: ${{ env.PROJECT_DIR }}/app/build/outputs/apk/debug/*.apk
+
+      # pag nag-fail yung tests, dito makikita yung report
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: ${{ env.PROJECT_DIR }}/app/build/reports/tests/
