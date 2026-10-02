@@ -14,18 +14,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.spotrapp.data.local.ZoneEntity
 import com.example.spotrapp.ui.theme.SpotrPrimary
 import com.example.spotrapp.ui.theme.SpotrSecondary
 import com.example.spotrapp.ui.theme.SpotrWhite
 
-// hardcoded para sa initial zone
-private val zoneOptions = listOf("All", "Zone 1", "Zone 2", "Zone 3", "Zone 4", "Zone 5", "+")
-
 @Composable
 fun ZoneFilterRow(
+    zones: List<ZoneEntity>,
     selectedZone: String,
     onZoneSelected: (String) -> Unit
 ) {
+    // "All" muna sa una, tapos yung zones sa database, tapos "+" sa dulo
+    val zoneOptions = mutableListOf("All")
+    zones.forEach { zone ->
+        zoneOptions.add(zone.name)
+    }
+    zoneOptions.add("+")
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
